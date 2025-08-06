@@ -40,7 +40,8 @@ namespace MenuMod2
         public static void giveAllCosmetics(MM2Button b = null)
         {
             const string debugPattern = @"(_test_|_dev_|_wip|debug|temp|placeholder|todo|_old|_backup|_copy|\.skinasset$|^test_)";
-            
+            //TODO: this are not all cosmetics items available, we are missing Gun Crab - Roacher (for playing demo before release, I would exclude it)
+            //and Gun Crab - Eyes since they are excluded from 
             foreach (var gear in Global.Instance.AllGear)
             {
                 var gearInfo = gear.Info;
