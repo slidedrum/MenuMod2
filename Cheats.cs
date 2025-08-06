@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using UnityEngine;
 
 namespace MenuMod2
@@ -28,28 +29,51 @@ namespace MenuMod2
                     if (upgrade.UpgradeType != Upgrade.Type.Invalid && upgrade.UpgradeType != Upgrade.Type.Cosmetic)
                     {
                         var iUpgrade = new UpgradeInstance(upgrade, gear);
-                        PlayerData.CollectInstance(iUpgrade);
-                        iUpgrade.Unlock();
+                        PlayerData.CollectInstance(iUpgrade, PlayerData.UnlockFlags.Hidden);
+                        iUpgrade.Unlock(true);
                     }
                 }
             }
+            SendTextChatMessageToClient("All upgrades for weapons are added silently.");
         }
+
         public static void giveAllCosmetics(MM2Button b = null)
         {
+            const string debugPattern = @"(_test_|_dev_|_wip|debug|temp|placeholder|todo|_old|_backup|_copy|\.skinasset$|^test_)";
+            
             foreach (var gear in Global.Instance.AllGear)
             {
                 var gearInfo = gear.Info;
                 foreach (var upgrade in gearInfo.Upgrades)
                 {
-                    if (upgrade.UpgradeType == Upgrade.Type.Cosmetic && upgrade.ExcludeFromWorldPool == false)
-                    {
-                        var iUpgrade = new UpgradeInstance(upgrade, gear);
-                        PlayerData.CollectInstance(iUpgrade);
-                        iUpgrade.Unlock();
-                    }
+                    if (upgrade.UpgradeType != Upgrade.Type.Cosmetic ||
+                        upgrade.ExcludeFromWorldPool != false ||
+                        Regex.IsMatch(upgrade.Name, debugPattern, RegexOptions.IgnoreCase)) 
+                        continue;
+                    var iUpgrade = new UpgradeInstance(upgrade, gear);
+                    PlayerData.CollectInstance(iUpgrade, PlayerData.UnlockFlags.Hidden);
+                    iUpgrade.Unlock(true);
                 }
             }
+
+            foreach (var gear in Global.Instance.Characters)
+            {
+                var gearInfo = gear.Info;
+                foreach (var upgrade in gearInfo.Upgrades)
+                {
+                    if (upgrade.UpgradeType != Upgrade.Type.Cosmetic ||
+                        Regex.IsMatch(upgrade.Name, debugPattern, RegexOptions.IgnoreCase))
+                        continue;
+                    
+                    var iUpgrade = new UpgradeInstance(upgrade, gear);
+                    PlayerData.CollectInstance(iUpgrade, PlayerData.UnlockFlags.Hidden);
+                    iUpgrade.Unlock(true);
+                }
+            }
+            
+            SendTextChatMessageToClient("All cosmetics for characters and weapons are added silently.");
         }
+
         public static void giveMissingUpgrades(MM2Button b = null)
         {
 
@@ -64,16 +88,17 @@ namespace MenuMod2
                         continue;
                     }
                     Logger.LogInfo($"Unlocking upgrade {upgrade.Name} for gear {gearInfo.Name}");
-                    PlayerData.CollectInstance(iUpgrade);
-                    iUpgrade.Unlock();
+                    PlayerData.CollectInstance(iUpgrade, PlayerData.UnlockFlags.Hidden);
+                    iUpgrade.Unlock(true);
                 }
             }
+            SendTextChatMessageToClient("All missing upgrades are added silently.");
         }
         public static void giveUpgrade(Upgrade upgrade, IUpgradable gear, MM2Button b = null)
         {
             var iUpgrade = new UpgradeInstance(upgrade, gear);
             PlayerData.CollectInstance(iUpgrade);
-            iUpgrade.Unlock();
+            iUpgrade.Unlock(true);
         }
         public static void printAllUpgradeStats(MM2Button b = null)
         {
@@ -198,8 +223,8 @@ namespace MenuMod2
         {
             MenuMod2.Logger.LogInfo("Sending test message to chat");
             SendTextChatMessageToClient("Debug Message this message is very long, longer than the 128 char limit. does it show everything, or what happens. " +
-                "I dont' know untill I test it.  But you'll know when you're reading this! \nDebug Message this message is very long, longer than the 128 " +
-                "char limit. does it show everything, or what happens.  I dont' know untill I test it.  But you'll know when you're reading this!");
+                                        "I dont' know untill I test it.  But you'll know when you're reading this! \nDebug Message this message is very long, longer than the 128 " +
+                                        "char limit. does it show everything, or what happens.  I dont' know untill I test it.  But you'll know when you're reading this!");
         }
         public static void SendTextChatMessageToClient(string Message, MM2Button b = null)
         {
