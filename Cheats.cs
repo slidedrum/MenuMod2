@@ -19,6 +19,8 @@ namespace MenuMod2
         public static bool superJump = false;
         public static bool airJump = false;
         public static List<MissionModifier> forcedModifiers = new List<MissionModifier>();
+        
+        //TODO: make an whitelist for upgrades and cosmetics to proof unreleased info to be leaked 
         public static void giveAllUpgrades(MM2Button b = null)
         {
             foreach (var gear in Global.Instance.AllGear)
@@ -39,16 +41,15 @@ namespace MenuMod2
 
         public static void giveAllCosmetics(MM2Button b = null)
         {
+            
             const string debugPattern = @"(_test_|_dev_|_wip|debug|temp|placeholder|todo|_old|_backup|_copy|\.skinasset$|^test_)";
-            //TODO: this are not all cosmetics items available, we are missing Gun Crab - Roacher (for playing demo before release, I would exclude it)
-            //and Gun Crab - Eyes since they are excluded from 
             foreach (var gear in Global.Instance.AllGear)
             {
                 var gearInfo = gear.Info;
                 foreach (var upgrade in gearInfo.Upgrades)
                 {
                     if (upgrade.UpgradeType != Upgrade.Type.Cosmetic ||
-                        upgrade.ExcludeFromWorldPool != false ||
+                        upgrade.ExcludeFromWorldPool ||
                         Regex.IsMatch(upgrade.Name, debugPattern, RegexOptions.IgnoreCase)) 
                         continue;
                     var iUpgrade = new UpgradeInstance(upgrade, gear);
@@ -553,8 +554,12 @@ namespace MenuMod2
                 var levelField = gearData.GetType().GetField("level", BindingFlags.NonPublic | BindingFlags.Instance);
                 int currentLevel = (int)levelField.GetValue(gearData);
                 levelField.SetValue(gearData, Math.Max(level, currentLevel));
+                //@Slide consider adding level instead of setting
+                // levelField.SetValue(gearData, Mathf.Max(currentLevel + level, 9999));
+                
             }
         }
+        
         public static void setAllCharictersToLevel(int level, MM2Button b = null)
         {
             var allCharicters = Global.Instance.Characters;
@@ -566,11 +571,15 @@ namespace MenuMod2
                 if (employeeData.IsUnlocked)
                 {
                     var levelField = employeeData.GetType().GetField("level", BindingFlags.NonPublic | BindingFlags.Instance);
-                    int currentLevel = (int)levelField.GetValue(employeeData);
+                    var currentLevel = (int)levelField?.GetValue(employeeData)!;
+                    //@Slide consider adding level instead of setting
                     levelField.SetValue(employeeData, Math.Max(level, currentLevel));
+                    // levelField.SetValue(employeeData, Mathf.Max(currentLevel + level, 9999));
                 }
             }
         }
+        
+        //TODO: i dont know if its necessary to increase total skill points spent + plus if it so it should increase if its his first upgrade
         public static void giveAllSkills(MM2Button b = null)
         {
             var allCharicters = Global.Instance.Characters;
@@ -584,28 +593,29 @@ namespace MenuMod2
                 foreach (var upgrade in upgrades)
                 {
                     MenuMod2.Logger.LogInfo($"Unlocking skill {upgrade.Upgrade.Name} for {employee.name}");
-                    UpgradeInstance upgradeInstance = PlayerData.CollectInstance(employee, upgrade.Upgrade, PlayerData.UnlockFlags.None);
+                    UpgradeInstance upgradeInstance = PlayerData.CollectInstance(employee, upgrade.Upgrade, PlayerData.UnlockFlags.Hidden);
                     upgradeInstance.Seed = upgrade.Upgrade.ID;
-                    upgradeInstance.Unlock(false);
+                    upgradeInstance.Unlock(true);
                     PlayerData instance = PlayerData.Instance;
                     int totalSkillPointsSpent = instance.TotalSkillPointsSpent;
                     instance.TotalSkillPointsSpent = totalSkillPointsSpent + 1;
                     skillTree.Refresh();
                 }
-
             }
+            
+            SendTextChatMessageToClient("All characters skills have been given to you.");
 
         }
         public static void unlockLockedSkills(MM2Button b = null)
         {
-            var allCharicters = Global.Instance.Characters;
-            MenuMod2.Logger.LogDebug($"found {allCharicters.Length} characters to unlock skills for.");
+            var allCharacters = Global.Instance.Characters;
+            MenuMod2.Logger.LogDebug($"found {allCharacters.Length} characters to unlock skills for.");
             //var allSkillTrees = allCharicters.Select(c => c.SkillTree).ToList();
-            foreach (var employee in allCharicters)
+            foreach (var employee in allCharacters)
             {
                 MenuMod2.Logger.LogDebug($"Unlocking all skills for {employee.name}");
                 var skillTree = employee.SkillTree;
-                SkillTreeUpgradeUI[] upgrades = skillTree.GetComponentsInChildren<SkillTreeUpgradeUI>();
+                var upgrades = skillTree.GetComponentsInChildren<SkillTreeUpgradeUI>();
                 foreach (var upgrade in upgrades)
                 {
                     if (PlayerData.GetUpgradeInfo(employee, upgrade.Upgrade).TotalInstancesCollected > 0)
@@ -614,16 +624,17 @@ namespace MenuMod2
                         continue;
                     }
                     MenuMod2.Logger.LogInfo($"Unlocking skill {upgrade.Upgrade.Name} for {employee.name}");
-                    UpgradeInstance upgradeInstance = PlayerData.CollectInstance(employee, upgrade.Upgrade, PlayerData.UnlockFlags.None);
+                    var upgradeInstance = PlayerData.CollectInstance(employee, upgrade.Upgrade, PlayerData.UnlockFlags.Hidden);
                     upgradeInstance.Seed = upgrade.Upgrade.ID;
-                    upgradeInstance.Unlock(false);
-                    PlayerData instance = PlayerData.Instance;
-                    int totalSkillPointsSpent = instance.TotalSkillPointsSpent;
+                    upgradeInstance.Unlock(true);
+                    var instance = PlayerData.Instance;
+                    var totalSkillPointsSpent = instance.TotalSkillPointsSpent;
                     instance.TotalSkillPointsSpent = totalSkillPointsSpent + 1;
                     skillTree.Refresh();
                 }
-
             }
+            SendTextChatMessageToClient("Characters locked skills have been unlocked.");
+            
         }
 
         public static void spawnEnemy(EnemyClass enemyClass, Vector3 pos = default, MM2Button b = null)

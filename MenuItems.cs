@@ -27,23 +27,18 @@ namespace MenuMod2
         public MenuMod2Menu(string indetifier, MenuMod2Menu _parrentMenu = null)
         {
             menuName = indetifier;
-            if (MenuMod2Manager.allMenus == null)
+            MenuMod2Manager.allMenus ??= [];
+            if (MenuMod2Manager.allMenus.Any(menu => menu.menuName == indetifier))
             {
-                MenuMod2Manager.allMenus = new List<MenuMod2Menu>();
+                throw new Exception($"Menu with name {indetifier} already exists.");
             }
-            foreach (var menu in MenuMod2Manager.allMenus)
-            {
-                if (menu.menuName == indetifier)
-                {
-                    throw new Exception($"Menu with name {indetifier} already exists.");
-                }
-            }
+            
             MenuMod2Manager.allMenus.Add(this);
             buttons = new List<MM2Button>();
             menuCanvas = new GameObject("menuCanvas");
             GameObject.DontDestroyOnLoad(menuCanvas);
 
-            Canvas canvas = menuCanvas.AddComponent<Canvas>();
+            var canvas = menuCanvas.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
 
             menuCanvas.AddComponent<CanvasScaler>();
@@ -73,8 +68,8 @@ namespace MenuMod2
                 MenuMod2Manager.currentMenu.Close();
             }
             MenuMod2Manager.currentMenu = this;
-            UnityEngine.Cursor.visible = true;
-            UnityEngine.Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
             foreach (var button in buttons)
             {
                 button.show();
@@ -100,23 +95,14 @@ namespace MenuMod2
                 button.hide();
             }
         }
-        public MenuMod2Menu hasMenu(string menuName)
+        public MenuMod2Menu hasMenu(string hasMenu)
         {
-            if (this.menuName == menuName)
+            if (menuName == hasMenu)
             {
                 return this;
             }
-            if (subMenus != null)
-            {
-                foreach (var subMenu in subMenus)
-                {
-                    if (subMenu.menuName == menuName)
-                    {
-                        return subMenu;
-                    }
-                }
-            }
-            return null;
+
+            return subMenus?.FirstOrDefault(subMenu => subMenu.menuName == hasMenu);
         }
         public MM2Button addButtonBackup(string text, UnityAction callback)
         {
@@ -139,12 +125,9 @@ namespace MenuMod2
         public void destroy()
         {
             var tempMenus = new List<MenuMod2Menu>(MenuMod2Manager.allMenus);
-            foreach (var menu in tempMenus)
+            foreach (var menu in tempMenus.Where(menu => menu.menuName == this.menuName))
             {
-                if (menu.menuName == this.menuName)
-                {
-                    MenuMod2Manager.allMenus.Remove(menu);
-                }
+                MenuMod2Manager.allMenus.Remove(menu);
             }
             if (MenuMod2Manager.currentMenu == this)
             {
@@ -159,12 +142,9 @@ namespace MenuMod2
                 }
             }
             var tempParrentButtons = new List<MM2Button>(parrentMenu?.buttons ?? new List<MM2Button>());
-            foreach (var button in tempParrentButtons)
+            foreach (var button in tempParrentButtons.Where(button => button.name == this.thisButton.name))
             {
-                if (button.name == this.thisButton.name)
-                {
-                    parrentMenu.buttons.Remove(button);
-                }
+                parrentMenu?.buttons.Remove(button);
             }
             var buttonsToRemove = new List<MM2Button>(buttons);
             foreach (var button in buttonsToRemove)
@@ -183,14 +163,11 @@ namespace MenuMod2
         public bool removeButton(string buttonName)
         {
             var buttonToRemove = buttons.FirstOrDefault(b => b.name == buttonName);
-            if (buttonToRemove != null)
-            {
-                buttons.Remove(buttonToRemove);
-                GameObject.Destroy(buttonToRemove.buttonObj);
-                arrangeButtons();
-                return true;
-            }
-            return false;
+            if (buttonToRemove == null) return false;
+            buttons.Remove(buttonToRemove);
+            GameObject.Destroy(buttonToRemove.buttonObj);
+            arrangeButtons();
+            return true;
         }
         public void arrangeButtons()
         {
